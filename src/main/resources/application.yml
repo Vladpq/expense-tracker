@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: expense-tracker
+  datasource:
+    url: jdbc:postgresql://localhost:5432/expense
+    username: postgres
+    password: postgres
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+
+
+jwt:
+  secret: dK6t12J4TcJ66Agu2UKiLeRmHII+MGOJwSE+9on0WgI=
+  expiration: 90000
