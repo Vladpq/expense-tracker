@@ -3,6 +3,7 @@ package com.github.valdpq.expensetracker.common.exception;
 import com.github.valdpq.expensetracker.auth.EmailAlreadyExistsException;
 import com.github.valdpq.expensetracker.category.CategoryAlreadyExistsException;
 import com.github.valdpq.expensetracker.category.CategoryNotFoundException;
+import com.github.valdpq.expensetracker.category.CategoryWithExpenseException;
 import com.github.valdpq.expensetracker.expense.ExpenseNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +26,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(CategoryAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleCategoryAlreadyExists(CategoryAlreadyExistsException e) {
+        return buildResponse(HttpStatus.CONFLICT, e.getMessage());
+    }
+
+    @ExceptionHandler(CategoryWithExpenseException.class)
+    public ResponseEntity<ErrorResponse> handleCategoryWithExpense(CategoryWithExpenseException e) {
         return buildResponse(HttpStatus.CONFLICT, e.getMessage());
     }
 

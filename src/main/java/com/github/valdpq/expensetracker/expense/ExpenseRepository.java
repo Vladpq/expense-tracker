@@ -27,4 +27,6 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
                                Pageable pageable);
 
     Optional<Expense> findByIdAndUserId(Long id, Long userId);
+
+    boolean existsByCategoryId(Long categoryId);
 }

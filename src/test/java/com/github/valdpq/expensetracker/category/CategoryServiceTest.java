@@ -2,6 +2,7 @@ package com.github.valdpq.expensetracker.category;
 
 import com.github.valdpq.expensetracker.category.dto.CategoryRequest;
 import com.github.valdpq.expensetracker.category.dto.CategoryResponse;
+import com.github.valdpq.expensetracker.expense.ExpenseRepository;
 import com.github.valdpq.expensetracker.user.User;
 import com.github.valdpq.expensetracker.user.UserRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -36,6 +37,9 @@ public class CategoryServiceTest {
 
     @Mock
     private CategoryRepository categoryRepository;
+
+    @Mock
+    private ExpenseRepository expenseRepository;
 
     @InjectMocks
     private CategoryService categoryService;
@@ -148,9 +152,36 @@ public class CategoryServiceTest {
                 .thenReturn(Optional.of(user));
         when(categoryRepository.findByIdAndUserId(1L, 1L))
                 .thenReturn(Optional.of(category));
+        when(expenseRepository.existsByCategoryId(1L))
+                .thenReturn(false);
 
         categoryService.deleteCategory(1L);
 
         verify(categoryRepository).delete(category);
+    }
+
+    @Test
+    void deleteCategory_shouldThrowCategoryWithExpenseException_whenCategoryHasExpenses() {
+
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        Category category = Category.builder()
+                .id(1L)
+                .name("Test")
+                .user(user)
+                .build();
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(categoryRepository.findByIdAndUserId(1L, 1L))
+                .thenReturn(Optional.of(category));
+        when(expenseRepository.existsByCategoryId(1L))
+                .thenReturn(true);
+
+        assertThrows(CategoryWithExpenseException.class,
+                () -> categoryService.deleteCategory(1L));
+        verify(categoryRepository, never()).delete(any());
     }
 }
