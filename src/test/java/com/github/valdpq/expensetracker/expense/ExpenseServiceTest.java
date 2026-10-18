@@ -1,0 +1,384 @@
+package com.github.valdpq.expensetracker.expense;
+
+import com.github.valdpq.expensetracker.category.Category;
+import com.github.valdpq.expensetracker.category.CategoryNotFoundException;
+import com.github.valdpq.expensetracker.category.CategoryRepository;
+import com.github.valdpq.expensetracker.expense.dto.CreateExpenseRequest;
+import com.github.valdpq.expensetracker.expense.dto.ExpenseResponse;
+import com.github.valdpq.expensetracker.expense.dto.PatchExpenseRequest;
+import com.github.valdpq.expensetracker.user.User;
+import com.github.valdpq.expensetracker.user.UserRepository;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.Month;
+import java.util.List;
+import java.util.Optional;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+public class ExpenseServiceTest {
+
+    @Mock
+    private CategoryRepository categoryRepository;
+
+    @Mock
+    private ExpenseRepository expenseRepository;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private ExpenseService expenseService;
+
+    @BeforeEach
+    void setUp() {
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                "email@test.com", null, List.of());
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void createExpense_shouldThrowCategoryNotFoundException_whenCategoryDoesNotExists() {
+
+        CreateExpenseRequest request = new CreateExpenseRequest(
+                BigDecimal.valueOf(100), LocalDate.of(2025, Month.AUGUST, 20),
+                1L, "Description");
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(categoryRepository.findByIdAndUserId(1L, 1L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(CategoryNotFoundException.class,
+                () -> expenseService.createExpense(request));
+        verify(expenseRepository, never()).save(any());
+    }
+
+
+    @Test
+    void createExpense_shouldSaveExpense_whenRequestIsValid() {
+
+        CreateExpenseRequest request = new CreateExpenseRequest(
+                BigDecimal.valueOf(100), LocalDate.of(2025, Month.AUGUST, 20),
+                1L, "Description");
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        Category category = Category.builder()
+                .id(1L)
+                .name("Test")
+                .user(user)
+                .build();
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(categoryRepository.findByIdAndUserId(1L, 1L))
+                .thenReturn(Optional.of(category));
+
+        ExpenseResponse response = expenseService.createExpense(request);
+
+        ArgumentCaptor<Expense> captor = ArgumentCaptor.forClass(Expense.class);
+        assertNotNull(response);
+        verify(expenseRepository).save(captor.capture());
+        assertEquals(0, BigDecimal.valueOf(100).compareTo(captor.getValue().getAmount()));
+        assertEquals(LocalDate.of(2025, Month.AUGUST, 20), captor.getValue().getExpenseDate());
+        assertEquals(1L, captor.getValue().getCategory().getId());
+        assertEquals(1L, captor.getValue().getUser().getId());
+        assertEquals("Description", captor.getValue().getDescription());
+    }
+
+    @Test
+    void getMyExpenses_shouldReturnFilteredPage_whenRequestIsValid() {
+
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        Category category = Category.builder()
+                .id(1L)
+                .name("Test")
+                .user(user)
+                .build();
+        Expense expense = Expense.builder()
+                .id(1L)
+                .amount(BigDecimal.valueOf(10.50))
+                .category(category)
+                .user(user)
+                .description("Description")
+                .expenseDate(LocalDate.of(2025, 9, 20))
+                .build();
+        List<Expense> expenseList = List.of(expense);
+        Page<Expense> expenses = new PageImpl<>(expenseList);
+        Pageable pageable = PageRequest.of(0, 10);
+        LocalDate from = LocalDate.of(2025, 8, 20);
+        LocalDate to = LocalDate.of(2025, 10, 20);
+        Long categoryId = 3L;
+
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(expenseRepository.findFiltered(from, to, categoryId, 1L, pageable))
+                .thenReturn(expenses);
+
+        Page<ExpenseResponse> result = expenseService.getMyExpenses(from, to, categoryId, pageable);
+
+        assertNotNull(result);
+        assertEquals("Description", result.getContent().getFirst().description());
+        assertEquals(1, result.getTotalElements());
+    }
+
+    @Test
+    void getMyExpenses_shouldReturnFilteredPage_whenRequestWithNoFilters() {
+
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        Category category = Category.builder()
+                .id(1L)
+                .name("Test")
+                .user(user)
+                .build();
+        Expense expense = Expense.builder()
+                .id(1L)
+                .amount(BigDecimal.valueOf(10.50))
+                .category(category)
+                .user(user)
+                .description("Description")
+                .expenseDate(LocalDate.of(2025, 9, 20))
+                .build();
+        List<Expense> expenseList = List.of(expense);
+        Page<Expense> expenses = new PageImpl<>(expenseList);
+        Pageable pageable = PageRequest.of(0, 10);
+        LocalDate from = null;
+        LocalDate to = null;
+        Long categoryId = null;
+
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(expenseRepository.findFiltered(from, to, categoryId, 1L, pageable))
+                .thenReturn(expenses);
+
+        Page<ExpenseResponse> result = expenseService.getMyExpenses(from, to, categoryId, pageable);
+
+        assertNotNull(result);
+        assertEquals("Description", result.getContent().getFirst().description());
+        assertEquals(1, result.getTotalElements());
+    }
+
+    @Test
+    void editExpense_shouldThrowExpenseNotFoundException_whenExpenseNotFound() {
+
+        PatchExpenseRequest request = new PatchExpenseRequest(
+                BigDecimal.valueOf(100), LocalDate.of(2025, Month.AUGUST, 20),
+                1L, "Description");
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(expenseRepository.findByIdAndUserId(1L, 1L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(ExpenseNotFoundException.class, () -> expenseService.editExpense(request, 1L));
+    }
+
+    @Test
+    void editExpense_shouldUpdateOnlyProvidedFields_whenPartialRequest() {
+
+        PatchExpenseRequest request = new PatchExpenseRequest(
+                BigDecimal.valueOf(100), null, null, null);
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        Category category = Category.builder()
+                .id(1L)
+                .name("Test")
+                .user(user)
+                .build();
+        Expense expense = Expense.builder()
+                .id(1L)
+                .amount(BigDecimal.valueOf(10.50))
+                .category(category)
+                .user(user)
+                .description("Description")
+                .expenseDate(LocalDate.of(2025, 9, 20))
+                .build();
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(expenseRepository.findByIdAndUserId(1L, 1L))
+                .thenReturn(Optional.of(expense));
+
+        ExpenseResponse response = expenseService.editExpense(request, 1L);
+
+        assertNotNull(response);
+        assertEquals(0, BigDecimal.valueOf(100).compareTo(expense.getAmount()));
+        assertEquals(LocalDate.of(2025, 9, 20), expense.getExpenseDate());
+        assertEquals(1L, expense.getCategory().getId());
+        assertEquals(1L, expense.getUser().getId());
+        assertEquals("Description", expense.getDescription());
+    }
+
+    @Test
+    void editExpense_shouldSaveChangedCategory_whenEditingCategory() {
+
+        PatchExpenseRequest request = new PatchExpenseRequest(
+                BigDecimal.valueOf(100), null, 2L, null);
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        Category category = Category.builder()
+                .id(1L)
+                .name("Test")
+                .user(user)
+                .build();
+        Category newCategory = Category.builder()
+                .id(2L)
+                .name("New")
+                .user(user)
+                .build();
+        Expense expense = Expense.builder()
+                .id(1L)
+                .amount(BigDecimal.valueOf(10.50))
+                .category(category)
+                .user(user)
+                .description("Description")
+                .expenseDate(LocalDate.of(2025, 9, 20))
+                .build();
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(expenseRepository.findByIdAndUserId(1L, 1L))
+                .thenReturn(Optional.of(expense));
+        when(categoryRepository.findByIdAndUserId(2L, 1L))
+                .thenReturn(Optional.of(newCategory));
+
+        ExpenseResponse response = expenseService.editExpense(request, 1L);
+
+        assertNotNull(response);
+        assertEquals(0, BigDecimal.valueOf(100).compareTo(expense.getAmount()));
+        assertEquals(LocalDate.of(2025, 9, 20), expense.getExpenseDate());
+        assertEquals(2L, expense.getCategory().getId());
+        assertEquals(1L, expense.getUser().getId());
+        assertEquals("Description", expense.getDescription());
+    }
+
+    @Test
+    void editExpense_shouldThrowCategoryNotFoundException_whenWrongCategory() {
+
+        PatchExpenseRequest request = new PatchExpenseRequest(BigDecimal.valueOf(100),
+                LocalDate.of(2025, 12, 17), 2L, "Edited");
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        Category category = Category.builder()
+                .id(1L)
+                .name("Test")
+                .user(user)
+                .build();
+        Expense expense = Expense.builder()
+                .id(1L)
+                .amount(BigDecimal.valueOf(10.50))
+                .category(category)
+                .user(user)
+                .description("Description")
+                .expenseDate(LocalDate.of(2025, 9, 20))
+                .build();
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(expenseRepository.findByIdAndUserId(1L, 1L))
+                .thenReturn(Optional.of(expense));
+        when(categoryRepository.findByIdAndUserId(2L, 1L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(CategoryNotFoundException.class,
+                () -> expenseService.editExpense(request, 1L));
+    }
+
+    @Test
+    void deleteExpense_shouldThrowExpenseNotFoundException_whenExpenseNotFound() {
+
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(expenseRepository.findByIdAndUserId(999L, 1L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(ExpenseNotFoundException.class,
+                () -> expenseService.deleteExpense(999L));
+        verify(expenseRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteExpense_shouldRemoveExpense_whenDeletingExpense() {
+
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        Category category = Category.builder()
+                .id(1L)
+                .name("Test")
+                .user(user)
+                .build();
+        Expense expense = Expense.builder()
+                .id(1L)
+                .amount(BigDecimal.valueOf(10.50))
+                .category(category)
+                .user(user)
+                .description("Description")
+                .expenseDate(LocalDate.of(2025, 9, 20))
+                .build();
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(expenseRepository.findByIdAndUserId(1L, 1L))
+                .thenReturn(Optional.of(expense));
+
+        expenseService.deleteExpense(1L);
+
+        verify(expenseRepository).delete(expense);
+    }
+}

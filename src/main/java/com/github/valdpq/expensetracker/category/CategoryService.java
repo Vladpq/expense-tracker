@@ -3,6 +3,7 @@ package com.github.valdpq.expensetracker.category;
 import com.github.valdpq.expensetracker.auth.CurrentUserProvider;
 import com.github.valdpq.expensetracker.category.dto.CategoryRequest;
 import com.github.valdpq.expensetracker.category.dto.CategoryResponse;
+import com.github.valdpq.expensetracker.expense.ExpenseRepository;
 import com.github.valdpq.expensetracker.user.User;
 import com.github.valdpq.expensetracker.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +19,7 @@ public class CategoryService {
 
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
+    private final ExpenseRepository expenseRepository;
 
     @Transactional
     public CategoryResponse addCategory(CategoryRequest request) {
@@ -49,6 +51,10 @@ public class CategoryService {
         User currentUser = getCurrentUser();
         Category category = categoryRepository.findByIdAndUserId(id, currentUser.getId())
                 .orElseThrow(() -> new CategoryNotFoundException("Category not found"));
+
+        if (expenseRepository.existsByCategoryId(category.getId())) {
+            throw new CategoryWithExpenseException("Category with expenses cannot be deleted");
+        }
 
         categoryRepository.delete(category);
     }
