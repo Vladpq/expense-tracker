@@ -6,6 +6,7 @@ import com.github.valdpq.expensetracker.category.CategoryNotFoundException;
 import com.github.valdpq.expensetracker.category.CategoryRepository;
 import com.github.valdpq.expensetracker.expense.dto.CreateExpenseRequest;
 import com.github.valdpq.expensetracker.expense.dto.ExpenseResponse;
+import com.github.valdpq.expensetracker.expense.dto.PatchExpenseRequest;
 import com.github.valdpq.expensetracker.user.User;
 import com.github.valdpq.expensetracker.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +50,42 @@ public class ExpenseService {
 
         return expenseRepository.findFiltered(from, to, categoryId, currentUser.getId(), pageable)
                 .map(ExpenseResponse::fromEntity);
+    }
+
+    @Transactional
+    public ExpenseResponse editExpense(PatchExpenseRequest request, Long expenseId) {
+        User user = getCurrentUser();
+        Expense expense = expenseRepository
+                .findByIdAndUserId(expenseId, user.getId())
+                .orElseThrow(() -> new ExpenseNotFoundException("Expense not found"));
+
+        if (request.categoryId() != null) {
+            Category category = categoryRepository.findByIdAndUserId(request.categoryId(), user.getId())
+                    .orElseThrow(() -> new CategoryNotFoundException("Category not found"));
+            expense.setCategory(category);
+        }
+
+        if (request.amount() != null) {
+            expense.setAmount(request.amount());
+        }
+
+        if (request.expenseDate() != null) {
+            expense.setExpenseDate(request.expenseDate());
+        }
+
+        if (request.description() != null) {
+            expense.setDescription(request.description());
+        }
+
+        return ExpenseResponse.fromEntity(expense);
+    }
+
+    @Transactional
+    public void deleteExpense(Long expenseId) {
+        Expense expense = expenseRepository.findByIdAndUserId(expenseId, getCurrentUser().getId())
+                .orElseThrow(() -> new ExpenseNotFoundException("Expense not found"));
+
+        expenseRepository.delete(expense);
     }
 
     private User getCurrentUser() {

@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.Optional;
 
 
 @Repository
@@ -24,4 +25,6 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
                                @Param("categoryId") Long categoryId,
                                @Param("userId") Long userId,
                                Pageable pageable);
+
+    Optional<Expense> findByIdAndUserId(Long id, Long userId);
 }

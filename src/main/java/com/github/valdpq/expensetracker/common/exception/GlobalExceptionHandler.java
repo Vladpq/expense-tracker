@@ -3,6 +3,7 @@ package com.github.valdpq.expensetracker.common.exception;
 import com.github.valdpq.expensetracker.auth.EmailAlreadyExistsException;
 import com.github.valdpq.expensetracker.category.CategoryAlreadyExistsException;
 import com.github.valdpq.expensetracker.category.CategoryNotFoundException;
+import com.github.valdpq.expensetracker.expense.ExpenseNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -38,6 +39,11 @@ public class GlobalExceptionHandler {
         e.getBindingResult().getFieldErrors().forEach(fieldError ->
                 errors.put(fieldError.getField(), fieldError.getDefaultMessage()));
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
+    }
+
+    @ExceptionHandler(ExpenseNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleExpenseNotFound(ExpenseNotFoundException e) {
+        return buildResponse(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
     @ExceptionHandler(CategoryNotFoundException.class)

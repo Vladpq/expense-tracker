@@ -3,6 +3,7 @@ package com.github.valdpq.expensetracker.expense;
 import com.github.valdpq.expensetracker.category.Category;
 import com.github.valdpq.expensetracker.expense.dto.CreateExpenseRequest;
 import com.github.valdpq.expensetracker.expense.dto.ExpenseResponse;
+import com.github.valdpq.expensetracker.expense.dto.PatchExpenseRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -35,5 +36,17 @@ public class ExpenseController {
             @RequestParam(value = "categoryId", required = false) Long categoryId,
             @PageableDefault(sort = {"expenseDate", "id"}, direction = Sort.Direction.DESC) Pageable pageable) {
         return ResponseEntity.status(HttpStatus.OK).body(expenseService.getMyExpenses(from, to, categoryId, pageable));
+    }
+
+    @PatchMapping("/{expenseId}")
+    public ResponseEntity<ExpenseResponse> editExpense(@RequestBody @Valid PatchExpenseRequest request,
+                                                       @PathVariable Long expenseId) {
+        return ResponseEntity.status(HttpStatus.OK).body(expenseService.editExpense(request, expenseId));
+    }
+
+    @DeleteMapping("/{expenseId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteExpense(@PathVariable Long expenseId) {
+        expenseService.deleteExpense(expenseId);
     }
 }
