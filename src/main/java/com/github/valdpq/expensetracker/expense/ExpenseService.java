@@ -9,9 +9,13 @@ import com.github.valdpq.expensetracker.expense.dto.ExpenseResponse;
 import com.github.valdpq.expensetracker.user.User;
 import com.github.valdpq.expensetracker.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +42,13 @@ public class ExpenseService {
         expenseRepository.save(expense);
 
         return ExpenseResponse.fromEntity(expense);
+    }
+
+    public Page<ExpenseResponse> getMyExpenses(LocalDate from, LocalDate to, Long categoryId, Pageable pageable) {
+        User currentUser = getCurrentUser();
+
+        return expenseRepository.findFiltered(from, to, categoryId, currentUser.getId(), pageable)
+                .map(ExpenseResponse::fromEntity);
     }
 
     private User getCurrentUser() {

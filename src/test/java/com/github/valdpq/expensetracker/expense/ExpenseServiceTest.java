@@ -15,6 +15,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -112,4 +116,83 @@ public class ExpenseServiceTest {
         assertEquals("Description", captor.getValue().getDescription());
     }
 
+    @Test
+    void getMyExpenses_shouldReturnFilteredPage_whenRequestIsValid() {
+
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        Category category = Category.builder()
+                .id(1L)
+                .name("Test")
+                .user(user)
+                .build();
+        Expense expense = Expense.builder()
+                .id(1L)
+                .amount(BigDecimal.valueOf(10.50))
+                .category(category)
+                .user(user)
+                .description("Description")
+                .expenseDate(LocalDate.of(2025, 9, 20))
+                .build();
+        List<Expense> expenseList = List.of(expense);
+        Page<Expense> expenses = new PageImpl<>(expenseList);
+        Pageable pageable = PageRequest.of(0, 10);
+        LocalDate from = LocalDate.of(2025, 8, 20);
+        LocalDate to = LocalDate.of(2025, 10, 20);
+        Long categoryId = 3L;
+
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(expenseRepository.findFiltered(from, to, categoryId, 1L, pageable))
+                .thenReturn(expenses);
+
+        Page<ExpenseResponse> result = expenseService.getMyExpenses(from, to, categoryId, pageable);
+
+        assertNotNull(result);
+        assertEquals("Description", result.getContent().getFirst().description());
+        assertEquals(1, result.getTotalElements());
+    }
+
+    @Test
+    void getMyExpenses_shouldReturnFilteredPage_whenRequestWithNoFilters() {
+
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        Category category = Category.builder()
+                .id(1L)
+                .name("Test")
+                .user(user)
+                .build();
+        Expense expense = Expense.builder()
+                .id(1L)
+                .amount(BigDecimal.valueOf(10.50))
+                .category(category)
+                .user(user)
+                .description("Description")
+                .expenseDate(LocalDate.of(2025, 9, 20))
+                .build();
+        List<Expense> expenseList = List.of(expense);
+        Page<Expense> expenses = new PageImpl<>(expenseList);
+        Pageable pageable = PageRequest.of(0, 10);
+        LocalDate from = null;
+        LocalDate to = null;
+        Long categoryId = null;
+
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(expenseRepository.findFiltered(from, to, categoryId, 1L, pageable))
+                .thenReturn(expenses);
+
+        Page<ExpenseResponse> result = expenseService.getMyExpenses(from, to, categoryId, pageable);
+
+        assertNotNull(result);
+        assertEquals("Description", result.getContent().getFirst().description());
+        assertEquals(1, result.getTotalElements());
+    }
 }
