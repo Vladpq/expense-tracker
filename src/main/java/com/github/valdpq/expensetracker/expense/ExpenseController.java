@@ -19,7 +19,7 @@ import java.time.LocalDate;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/expense")
+@RequestMapping("/api/expenses")
 public class ExpenseController {
 
     private final ExpenseService expenseService;
