@@ -2,14 +2,12 @@ package com.github.valdpq.expensetracker.budget;
 
 import com.github.valdpq.expensetracker.budget.dto.BudgetResponse;
 import com.github.valdpq.expensetracker.budget.dto.CreateBudgetRequest;
+import com.github.valdpq.expensetracker.budget.dto.UpdateBudgetRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -21,5 +19,17 @@ public class BudgetController {
     @PostMapping
     public ResponseEntity<BudgetResponse> createBudget(@RequestBody @Valid CreateBudgetRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(budgetService.createBudget(request));
+    }
+
+    @PatchMapping("/{budgetId}")
+    public ResponseEntity<BudgetResponse> updateBudget(@RequestBody @Valid UpdateBudgetRequest request,
+                                                       @PathVariable Long budgetId) {
+        return ResponseEntity.status(HttpStatus.OK).body(budgetService.updateBudget(request, budgetId));
+    }
+
+    @DeleteMapping("/{budgetId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteBudget(@PathVariable Long budgetId) {
+        budgetService.deleteBudget(budgetId);
     }
 }

@@ -3,6 +3,7 @@ package com.github.valdpq.expensetracker.budget;
 import com.github.valdpq.expensetracker.auth.CurrentUserProvider;
 import com.github.valdpq.expensetracker.budget.dto.BudgetResponse;
 import com.github.valdpq.expensetracker.budget.dto.CreateBudgetRequest;
+import com.github.valdpq.expensetracker.budget.dto.UpdateBudgetRequest;
 import com.github.valdpq.expensetracker.category.Category;
 import com.github.valdpq.expensetracker.category.CategoryNotFoundException;
 import com.github.valdpq.expensetracker.category.CategoryRepository;
@@ -42,6 +43,25 @@ public class BudgetService {
         budgetRepository.save(budget);
 
         return BudgetResponse.fromEntity(budget);
+    }
+
+    @Transactional
+    public BudgetResponse updateBudget(UpdateBudgetRequest request, Long budgetId) {
+        User currentUser = getCurrentUser();
+        Budget budget = budgetRepository.findByIdAndUserId(budgetId, currentUser.getId())
+                .orElseThrow(() -> new BudgetNotFoundException("Budget not found"));
+
+        budget.setAmount(request.amount());
+        return BudgetResponse.fromEntity(budget);
+    }
+
+    @Transactional
+    public void deleteBudget(Long budgetId) {
+        User currentUser = getCurrentUser();
+        Budget budget = budgetRepository.findByIdAndUserId(budgetId, currentUser.getId())
+                .orElseThrow(() -> new BudgetNotFoundException("Budget not found"));
+
+        budgetRepository.delete(budget);
     }
 
     private User getCurrentUser() {

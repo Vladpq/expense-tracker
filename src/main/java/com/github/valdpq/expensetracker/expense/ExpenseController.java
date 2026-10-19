@@ -1,6 +1,5 @@
 package com.github.valdpq.expensetracker.expense;
 
-import com.github.valdpq.expensetracker.category.Category;
 import com.github.valdpq.expensetracker.expense.dto.CreateExpenseRequest;
 import com.github.valdpq.expensetracker.expense.dto.ExpenseResponse;
 import com.github.valdpq.expensetracker.expense.dto.PatchExpenseRequest;

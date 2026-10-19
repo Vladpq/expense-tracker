@@ -2,6 +2,7 @@ package com.github.valdpq.expensetracker.budget;
 
 import com.github.valdpq.expensetracker.budget.dto.BudgetResponse;
 import com.github.valdpq.expensetracker.budget.dto.CreateBudgetRequest;
+import com.github.valdpq.expensetracker.budget.dto.UpdateBudgetRequest;
 import com.github.valdpq.expensetracker.category.Category;
 import com.github.valdpq.expensetracker.category.CategoryNotFoundException;
 import com.github.valdpq.expensetracker.category.CategoryRepository;
@@ -135,5 +136,104 @@ public class BudgetServiceTest {
         assertEquals(YearMonth.of(2026, 10), captor.getValue().getMonth());
         assertEquals(1L, captor.getValue().getCategory().getId());
         assertEquals(1L, captor.getValue().getUser().getId());
+    }
+
+    @Test
+    void updateBudget_shouldThrowBudgetNotFoundException_whenBudgetNotFound() {
+
+        UpdateBudgetRequest request = new UpdateBudgetRequest(BigDecimal.valueOf(1000));
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(budgetRepository.findByIdAndUserId(1L, 1L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(BudgetNotFoundException.class, () -> budgetService.updateBudget(request, 1L));
+    }
+
+    @Test
+    void updateBudget_shouldUpdateOnlyAmount_whenRequestIsValid() {
+
+        UpdateBudgetRequest request = new UpdateBudgetRequest(BigDecimal.valueOf(1000));
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        Category category = Category.builder()
+                .id(1L)
+                .name("Test")
+                .user(user)
+                .build();
+        Budget budget = Budget.builder()
+                .id(1L)
+                .user(user)
+                .category(category)
+                .month(YearMonth.of(2026, 10))
+                .amount(BigDecimal.valueOf(1500))
+                .build();
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(budgetRepository.findByIdAndUserId(1L, 1L))
+                .thenReturn(Optional.of(budget));
+
+        BudgetResponse response = budgetService.updateBudget(request, 1L);
+
+        assertNotNull(response);
+        assertEquals(0, BigDecimal.valueOf(1000).compareTo(budget.getAmount()));
+        assertEquals(1L, budget.getCategory().getId());
+        assertEquals(YearMonth.of(2026, 10), budget.getMonth());
+    }
+
+    @Test
+    void deleteBudget_shouldThrowBudgetNotFoundException_whenBudgetNotFound() {
+
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(budgetRepository.findByIdAndUserId(999L, 1L))
+                .thenReturn(Optional.empty());
+
+        assertThrows(BudgetNotFoundException.class,
+                () -> budgetService.deleteBudget(999L));
+        verify(budgetRepository, never()).delete(any());
+    }
+
+    @Test
+    void deleteBudget_shouldRemoveBudget_whenDeletingBudget() {
+
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        Category category = Category.builder()
+                .id(1L)
+                .name("Test")
+                .user(user)
+                .build();
+        Budget budget = Budget.builder()
+                .id(1L)
+                .user(user)
+                .category(category)
+                .month(YearMonth.of(2026, 10))
+                .amount(BigDecimal.valueOf(1500))
+                .build();
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(budgetRepository.findByIdAndUserId(1L, 1L))
+                .thenReturn(Optional.of(budget));
+
+        budgetService.deleteBudget(1L);
+
+        verify(budgetRepository).delete(budget);
     }
 }

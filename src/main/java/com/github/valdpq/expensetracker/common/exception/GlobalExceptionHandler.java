@@ -2,6 +2,7 @@ package com.github.valdpq.expensetracker.common.exception;
 
 import com.github.valdpq.expensetracker.auth.EmailAlreadyExistsException;
 import com.github.valdpq.expensetracker.budget.BudgetAlreadyExistsException;
+import com.github.valdpq.expensetracker.budget.BudgetNotFoundException;
 import com.github.valdpq.expensetracker.category.CategoryAlreadyExistsException;
 import com.github.valdpq.expensetracker.category.CategoryNotFoundException;
 import com.github.valdpq.expensetracker.category.CategoryWithExpenseException;
@@ -60,6 +61,11 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(CategoryNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleCategoryNotFound(CategoryNotFoundException e) {
+        return buildResponse(HttpStatus.NOT_FOUND, e.getMessage());
+    }
+
+    @ExceptionHandler(BudgetNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleBudgetNotFound(BudgetNotFoundException e) {
         return buildResponse(HttpStatus.NOT_FOUND, e.getMessage());
     }
 
