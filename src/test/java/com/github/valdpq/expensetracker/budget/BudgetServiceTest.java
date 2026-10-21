@@ -1,11 +1,14 @@
 package com.github.valdpq.expensetracker.budget;
 
 import com.github.valdpq.expensetracker.budget.dto.BudgetResponse;
+import com.github.valdpq.expensetracker.budget.dto.BudgetStatusResponse;
 import com.github.valdpq.expensetracker.budget.dto.CreateBudgetRequest;
 import com.github.valdpq.expensetracker.budget.dto.UpdateBudgetRequest;
 import com.github.valdpq.expensetracker.category.Category;
 import com.github.valdpq.expensetracker.category.CategoryNotFoundException;
 import com.github.valdpq.expensetracker.category.CategoryRepository;
+import com.github.valdpq.expensetracker.expense.CategorySpent;
+import com.github.valdpq.expensetracker.expense.ExpenseRepository;
 import com.github.valdpq.expensetracker.user.User;
 import com.github.valdpq.expensetracker.user.UserRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -43,6 +46,9 @@ public class BudgetServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private ExpenseRepository expenseRepository;
 
     @InjectMocks
     private BudgetService budgetService;
@@ -235,5 +241,149 @@ public class BudgetServiceTest {
         budgetService.deleteBudget(1L);
 
         verify(budgetRepository).delete(budget);
+    }
+
+    @Test
+    void getBudgetStatus_shouldShowValidStatuses_whenGettingBudgetStatus() {
+
+        YearMonth targetMonth = YearMonth.of(2026, 10);
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        Category category1 = Category.builder()
+                .id(1L)
+                .name("Test1")
+                .user(user)
+                .build();
+        Category category2 = Category.builder()
+                .id(2L)
+                .name("Test2")
+                .user(user)
+                .build();
+        Budget budget1 = Budget.builder()
+                .id(1L)
+                .user(user)
+                .category(category1)
+                .month(targetMonth)
+                .amount(BigDecimal.valueOf(1000))
+                .build();
+        Budget budget2 = Budget.builder()
+                .id(2L)
+                .user(user)
+                .category(category2)
+                .month(targetMonth)
+                .amount(BigDecimal.valueOf(500))
+                .build();
+
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(budgetRepository.findAllByUserIdAndMonth(1L, targetMonth))
+                .thenReturn(List.of(budget1, budget2));
+        when(expenseRepository.sumByCategory(1L, targetMonth.atDay(1), targetMonth.atEndOfMonth()))
+                .thenReturn(List.of(new CategorySpent(1L, BigDecimal.valueOf(1200))));
+
+        List<BudgetStatusResponse> result = budgetService.getBudgetStatus(targetMonth);
+
+        assertNotNull(result);
+        assertEquals(0, result.get(0).spent().compareTo(BigDecimal.valueOf(1200)));
+        assertEquals(0, result.get(0).remaining().compareTo(BigDecimal.valueOf(-200)));
+        assertTrue(result.get(0).exceeded());
+        assertEquals(0, result.get(1).spent().compareTo(BigDecimal.valueOf(0)));
+        assertEquals(0, result.get(1).remaining().compareTo(BigDecimal.valueOf(500)));
+        assertFalse(result.get(1).exceeded());
+    }
+
+    @Test
+    void getBudgetStatus_shouldNotMarkExceeded_whenSpentEqualsLimit() {
+
+        YearMonth targetMonth = YearMonth.of(2026, 10);
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        Category category1 = Category.builder()
+                .id(1L)
+                .name("Test1")
+                .user(user)
+                .build();
+        Budget budget1 = Budget.builder()
+                .id(1L)
+                .user(user)
+                .category(category1)
+                .month(targetMonth)
+                .amount(BigDecimal.valueOf(1000))
+                .build();
+
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(budgetRepository.findAllByUserIdAndMonth(1L, targetMonth))
+                .thenReturn(List.of(budget1));
+        when(expenseRepository.sumByCategory(1L, targetMonth.atDay(1), targetMonth.atEndOfMonth()))
+                .thenReturn(List.of(new CategorySpent(1L, BigDecimal.valueOf(1000))));
+
+        List<BudgetStatusResponse> result = budgetService.getBudgetStatus(targetMonth);
+
+        assertNotNull(result);
+        assertFalse(result.get(0).exceeded());
+    }
+
+    @Test
+    void getBudgetStatus_shouldUseCurrentMonth_whenMonthIsNull() {
+
+        YearMonth targetMonth = YearMonth.now();
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        Category category1 = Category.builder()
+                .id(1L)
+                .name("Test1")
+                .user(user)
+                .build();
+        Budget budget1 = Budget.builder()
+                .id(1L)
+                .user(user)
+                .category(category1)
+                .month(targetMonth)
+                .amount(BigDecimal.valueOf(1000))
+                .build();
+
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(budgetRepository.findAllByUserIdAndMonth(1L, targetMonth))
+                .thenReturn(List.of(budget1));
+        when(expenseRepository.sumByCategory(1L, targetMonth.atDay(1), targetMonth.atEndOfMonth()))
+                .thenReturn(List.of(new CategorySpent(1L, BigDecimal.valueOf(1200))));
+
+        List<BudgetStatusResponse> result = budgetService.getBudgetStatus(null);
+
+        assertNotNull(result);
+        assertEquals(targetMonth, result.get(0).month());
+    }
+
+    @Test
+    void getBudgetStatus_shouldReturnEmptyList_whenNoBudgetsExist() {
+
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        YearMonth targetMonth = YearMonth.now();
+
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(budgetRepository.findAllByUserIdAndMonth(1L, targetMonth))
+                .thenReturn(List.of());
+        when(expenseRepository.sumByCategory(1L, targetMonth.atDay(1), targetMonth.atEndOfMonth()))
+                .thenReturn(List.of());
+
+        List<BudgetStatusResponse> result = budgetService.getBudgetStatus(targetMonth);
+
+        assertTrue(result.isEmpty());
     }
 }
