@@ -1,7 +1,7 @@
 package com.github.valdpq.expensetracker.expense;
 
-import com.github.valdpq.expensetracker.category.Category;
 import com.github.valdpq.expensetracker.expense.dto.CreateExpenseRequest;
+import com.github.valdpq.expensetracker.expense.dto.CreateExpenseResponse;
 import com.github.valdpq.expensetracker.expense.dto.ExpenseResponse;
 import com.github.valdpq.expensetracker.expense.dto.PatchExpenseRequest;
 import jakarta.validation.Valid;
@@ -19,13 +19,13 @@ import java.time.LocalDate;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/expense")
+@RequestMapping("/api/expenses")
 public class ExpenseController {
 
     private final ExpenseService expenseService;
 
     @PostMapping
-    public ResponseEntity<ExpenseResponse> createExpense(@RequestBody @Valid CreateExpenseRequest request) {
+    public ResponseEntity<CreateExpenseResponse> createExpense(@RequestBody @Valid CreateExpenseRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(expenseService.createExpense(request));
     }
 

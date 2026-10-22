@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 
@@ -20,8 +21,8 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
             AND (cast(:to AS LocalDate) IS NULL OR e.expenseDate <= :to)
             AND (cast(:categoryId AS Long) IS NULL OR e.category.id = :categoryId)
             """)
-    Page<Expense> findFiltered(@Param("from")LocalDate from,
-                               @Param("to")LocalDate to,
+    Page<Expense> findFiltered(@Param("from") LocalDate from,
+                               @Param("to") LocalDate to,
                                @Param("categoryId") Long categoryId,
                                @Param("userId") Long userId,
                                Pageable pageable);
@@ -29,4 +30,15 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
     Optional<Expense> findByIdAndUserId(Long id, Long userId);
 
     boolean existsByCategoryId(Long categoryId);
+
+    @Query("""
+            SELECT new com.github.valdpq.expensetracker.expense.CategorySpent(e.category.id, SUM (e.amount))
+            FROM Expense e
+            WHERE e.user.id = :userId
+            AND e.expenseDate >= :from AND e.expenseDate <= :to
+            GROUP BY e.category.id
+            """)
+    List<CategorySpent> sumByCategory(@Param("userId") Long userId,
+                                      @Param("from") LocalDate from,
+                                      @Param("to") LocalDate to);
 }

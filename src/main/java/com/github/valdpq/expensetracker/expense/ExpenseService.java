@@ -1,10 +1,14 @@
 package com.github.valdpq.expensetracker.expense;
 
 import com.github.valdpq.expensetracker.auth.CurrentUserProvider;
+import com.github.valdpq.expensetracker.budget.Budget;
+import com.github.valdpq.expensetracker.budget.BudgetNotFoundException;
+import com.github.valdpq.expensetracker.budget.BudgetRepository;
 import com.github.valdpq.expensetracker.category.Category;
 import com.github.valdpq.expensetracker.category.CategoryNotFoundException;
 import com.github.valdpq.expensetracker.category.CategoryRepository;
 import com.github.valdpq.expensetracker.expense.dto.CreateExpenseRequest;
+import com.github.valdpq.expensetracker.expense.dto.CreateExpenseResponse;
 import com.github.valdpq.expensetracker.expense.dto.ExpenseResponse;
 import com.github.valdpq.expensetracker.expense.dto.PatchExpenseRequest;
 import com.github.valdpq.expensetracker.user.User;
@@ -16,7 +20,11 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -25,9 +33,10 @@ public class ExpenseService {
     private final CategoryRepository categoryRepository;
     private final ExpenseRepository expenseRepository;
     private final UserRepository userRepository;
+    private final BudgetRepository budgetRepository;
 
     @Transactional
-    public ExpenseResponse createExpense(CreateExpenseRequest request) {
+    public CreateExpenseResponse createExpense(CreateExpenseRequest request) {
         User currentUser = getCurrentUser();
         Category category = categoryRepository.findByIdAndUserId(request.categoryId(), currentUser.getId())
                 .orElseThrow(() -> new CategoryNotFoundException("Category not found"));
@@ -42,7 +51,25 @@ public class ExpenseService {
 
         expenseRepository.save(expense);
 
-        return ExpenseResponse.fromEntity(expense);
+        YearMonth month = YearMonth.of(request.expenseDate().getYear(), request.expenseDate().getMonth());
+
+        boolean budgetExceeded = budgetRepository.findByCategoryIdAndMonth(category.getId(), month)
+                .map(b -> getSpent(currentUser, month, category)
+                        .compareTo(b.getAmount()) > 0)
+                .orElse(false);
+
+        return new CreateExpenseResponse(expense.getId(), expense.getAmount(), expense.getExpenseDate(),
+                expense.getCategory().getId(), expense.getDescription(), budgetExceeded);
+    }
+
+    private BigDecimal getSpent(User currentUser, YearMonth month, Category category) {
+        return expenseRepository
+                .sumByCategory(currentUser.getId(), month.atDay(1), month.atEndOfMonth())
+                .stream()
+                .filter(c -> c.categoryId().equals(category.getId()))
+                .map(CategorySpent::total)
+                .findFirst()
+                .orElse(BigDecimal.ZERO);
     }
 
     public Page<ExpenseResponse> getMyExpenses(LocalDate from, LocalDate to, Long categoryId, Pageable pageable) {

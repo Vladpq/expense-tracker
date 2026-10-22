@@ -1,9 +1,12 @@
 package com.github.valdpq.expensetracker.expense;
 
+import com.github.valdpq.expensetracker.budget.Budget;
+import com.github.valdpq.expensetracker.budget.BudgetRepository;
 import com.github.valdpq.expensetracker.category.Category;
 import com.github.valdpq.expensetracker.category.CategoryNotFoundException;
 import com.github.valdpq.expensetracker.category.CategoryRepository;
 import com.github.valdpq.expensetracker.expense.dto.CreateExpenseRequest;
+import com.github.valdpq.expensetracker.expense.dto.CreateExpenseResponse;
 import com.github.valdpq.expensetracker.expense.dto.ExpenseResponse;
 import com.github.valdpq.expensetracker.expense.dto.PatchExpenseRequest;
 import com.github.valdpq.expensetracker.user.User;
@@ -27,6 +30,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.Month;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,6 +50,9 @@ public class ExpenseServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private BudgetRepository budgetRepository;
 
     @InjectMocks
     private ExpenseService expenseService;
@@ -105,7 +112,7 @@ public class ExpenseServiceTest {
         when(categoryRepository.findByIdAndUserId(1L, 1L))
                 .thenReturn(Optional.of(category));
 
-        ExpenseResponse response = expenseService.createExpense(request);
+        CreateExpenseResponse response = expenseService.createExpense(request);
 
         ArgumentCaptor<Expense> captor = ArgumentCaptor.forClass(Expense.class);
         assertNotNull(response);
@@ -380,5 +387,122 @@ public class ExpenseServiceTest {
         expenseService.deleteExpense(1L);
 
         verify(expenseRepository).delete(expense);
+    }
+
+    @Test
+    void createExpense_shouldSaveExpense_wheNoBudgetExists() {
+
+        CreateExpenseRequest request = new CreateExpenseRequest(
+                BigDecimal.valueOf(100), LocalDate.of(2025, Month.AUGUST, 20),
+                1L, "Description");
+        YearMonth targetMonth = YearMonth.of(request.expenseDate().getYear(), request.expenseDate().getMonth());
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        Category category = Category.builder()
+                .id(1L)
+                .name("Test")
+                .user(user)
+                .build();
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(categoryRepository.findByIdAndUserId(1L, 1L))
+                .thenReturn(Optional.of(category));
+        when(budgetRepository.findByCategoryIdAndMonth(1L, targetMonth))
+                .thenReturn(Optional.empty());
+
+        CreateExpenseResponse response = expenseService.createExpense(request);
+
+        ArgumentCaptor<Expense> captor = ArgumentCaptor.forClass(Expense.class);
+        assertNotNull(response);
+        verify(expenseRepository).save(captor.capture());
+        assertEquals(0, BigDecimal.valueOf(100).compareTo(captor.getValue().getAmount()));
+        assertEquals(LocalDate.of(2025, Month.AUGUST, 20), captor.getValue().getExpenseDate());
+        assertEquals(1L, captor.getValue().getCategory().getId());
+        assertEquals(1L, captor.getValue().getUser().getId());
+        assertEquals("Description", captor.getValue().getDescription());
+        assertFalse(response.budgetExceeded());
+        verify(expenseRepository, never()).sumByCategory(any(), any(), any());
+    }
+
+    @Test
+    void createExpense_shouldSaveExpenseWithExceededFlag_whenBudgetIsExceeded() {
+
+        CreateExpenseRequest request = new CreateExpenseRequest(
+                BigDecimal.valueOf(100), LocalDate.of(2025, Month.AUGUST, 20),
+                1L, "Description");
+        YearMonth targetMonth = YearMonth.of(request.expenseDate().getYear(), request.expenseDate().getMonth());
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        Category category = Category.builder()
+                .id(1L)
+                .name("Test")
+                .user(user)
+                .build();
+        Budget budget = Budget.builder()
+                .id(1L)
+                .month(targetMonth)
+                .category(category)
+                .user(user)
+                .amount(BigDecimal.valueOf(1000))
+                .build();
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(categoryRepository.findByIdAndUserId(1L, 1L))
+                .thenReturn(Optional.of(category));
+        when(budgetRepository.findByCategoryIdAndMonth(1L, targetMonth))
+                .thenReturn(Optional.of(budget));
+        when(expenseRepository.sumByCategory(1L, targetMonth.atDay(1), targetMonth.atEndOfMonth()))
+                .thenReturn(List.of(new CategorySpent(1L, BigDecimal.valueOf(1200))));
+
+        CreateExpenseResponse response = expenseService.createExpense(request);
+
+
+        verify(expenseRepository).save(any(Expense.class));
+        assertTrue(response.budgetExceeded());
+    }
+
+    @Test
+    void createExpense_shouldSaveExpenseWithNotExceededFlag_whenSpentEqualsLimit() {
+
+        CreateExpenseRequest request = new CreateExpenseRequest(
+                BigDecimal.valueOf(100), LocalDate.of(2025, Month.AUGUST, 20),
+                1L, "Description");
+        YearMonth targetMonth = YearMonth.of(request.expenseDate().getYear(), request.expenseDate().getMonth());
+        User user = User.builder()
+                .id(1L)
+                .email("email@test.com")
+                .build();
+        Category category = Category.builder()
+                .id(1L)
+                .name("Test")
+                .user(user)
+                .build();
+        Budget budget = Budget.builder()
+                .id(1L)
+                .month(targetMonth)
+                .category(category)
+                .user(user)
+                .amount(BigDecimal.valueOf(1000))
+                .build();
+
+        when(userRepository.findByEmail(anyString()))
+                .thenReturn(Optional.of(user));
+        when(categoryRepository.findByIdAndUserId(1L, 1L))
+                .thenReturn(Optional.of(category));
+        when(budgetRepository.findByCategoryIdAndMonth(1L, targetMonth))
+                .thenReturn(Optional.of(budget));
+        when(expenseRepository.sumByCategory(1L, targetMonth.atDay(1), targetMonth.atEndOfMonth()))
+                .thenReturn(List.of(new CategorySpent(1L, BigDecimal.valueOf(1000))));
+
+        CreateExpenseResponse response = expenseService.createExpense(request);
+
+        verify(expenseRepository).save(any(Expense.class));
+        assertFalse(response.budgetExceeded());
     }
 }
