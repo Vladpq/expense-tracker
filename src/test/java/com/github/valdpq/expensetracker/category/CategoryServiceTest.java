@@ -1,5 +1,6 @@
 package com.github.valdpq.expensetracker.category;
 
+import com.github.valdpq.expensetracker.budget.BudgetRepository;
 import com.github.valdpq.expensetracker.category.dto.CategoryRequest;
 import com.github.valdpq.expensetracker.category.dto.CategoryResponse;
 import com.github.valdpq.expensetracker.expense.ExpenseRepository;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -40,6 +42,9 @@ public class CategoryServiceTest {
 
     @Mock
     private ExpenseRepository expenseRepository;
+
+    @Mock
+    private BudgetRepository budgetRepository;
 
     @InjectMocks
     private CategoryService categoryService;
@@ -157,7 +162,9 @@ public class CategoryServiceTest {
 
         categoryService.deleteCategory(1L);
 
-        verify(categoryRepository).delete(category);
+        InOrder inOrder = inOrder(budgetRepository, categoryRepository);
+        inOrder.verify(budgetRepository).deleteAllByCategoryId(1L);
+        inOrder.verify(categoryRepository).delete(category);
     }
 
     @Test
@@ -182,6 +189,7 @@ public class CategoryServiceTest {
 
         assertThrows(CategoryWithExpenseException.class,
                 () -> categoryService.deleteCategory(1L));
+        verify(budgetRepository, never()).deleteAllByCategoryId(any());
         verify(categoryRepository, never()).delete(any());
     }
 }

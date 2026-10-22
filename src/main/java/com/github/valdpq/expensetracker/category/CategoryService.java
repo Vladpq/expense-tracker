@@ -1,6 +1,7 @@
 package com.github.valdpq.expensetracker.category;
 
 import com.github.valdpq.expensetracker.auth.CurrentUserProvider;
+import com.github.valdpq.expensetracker.budget.BudgetRepository;
 import com.github.valdpq.expensetracker.category.dto.CategoryRequest;
 import com.github.valdpq.expensetracker.category.dto.CategoryResponse;
 import com.github.valdpq.expensetracker.expense.ExpenseRepository;
@@ -20,6 +21,7 @@ public class CategoryService {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final ExpenseRepository expenseRepository;
+    private final BudgetRepository budgetRepository;
 
     @Transactional
     public CategoryResponse addCategory(CategoryRequest request) {
@@ -56,6 +58,7 @@ public class CategoryService {
             throw new CategoryWithExpenseException("Category with expenses cannot be deleted");
         }
 
+        budgetRepository.deleteAllByCategoryId(category.getId());
         categoryRepository.delete(category);
     }
 
