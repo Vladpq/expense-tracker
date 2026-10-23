@@ -5,6 +5,8 @@ import java.util.List;
 
 public record ReportResponse(
         BigDecimal total,
-        List<CategoryReport> categories
+        List<CategoryReport> categories,
+        BigDecimal previousMonthTotal,
+        BigDecimal difference
 ) {
 }

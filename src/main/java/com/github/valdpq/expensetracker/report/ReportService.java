@@ -26,13 +26,12 @@ public class ReportService {
     public ReportResponse reportByMonth(YearMonth month) {
         User currentUser = getCurrentUser();
         YearMonth targetMonth = month == null ? YearMonth.now() : month;
+        YearMonth prevMonth = targetMonth.minusMonths(1);
 
         List<CategoryExpenseSummary> categoryExpenseSummaries = expenseRepository
                 .sumByCategoryReport(currentUser.getId(), targetMonth.atDay(1), targetMonth.atEndOfMonth());
 
-        BigDecimal totalSpent = categoryExpenseSummaries.stream()
-                .map(CategoryExpenseSummary::totalSpent)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalSpent = totalOf(categoryExpenseSummaries);
 
         List<CategoryReport> categoryReports = categoryExpenseSummaries.stream()
                 .map(summary -> new CategoryReport(summary.categoryId(),
@@ -43,7 +42,17 @@ public class ReportService {
                                 .divide(totalSpent, 2, RoundingMode.HALF_UP)))
                 .toList();
 
-        return new ReportResponse(totalSpent, categoryReports);
+        BigDecimal previousMonthTotal = totalOf(expenseRepository
+                .sumByCategoryReport(currentUser.getId(), prevMonth.atDay(1), prevMonth.atEndOfMonth()));
+        BigDecimal difference = totalSpent.subtract(previousMonthTotal);
+
+        return new ReportResponse(totalSpent, categoryReports, previousMonthTotal, difference);
+    }
+
+    private static BigDecimal totalOf(List<CategoryExpenseSummary> categoryExpenseSummaries) {
+        return categoryExpenseSummaries.stream()
+                .map(CategoryExpenseSummary::totalSpent)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     private User getCurrentUser() {
