@@ -41,4 +41,16 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
     List<CategorySpent> sumByCategory(@Param("userId") Long userId,
                                       @Param("from") LocalDate from,
                                       @Param("to") LocalDate to);
+
+    @Query("""
+            SELECT new com.github.valdpq.expensetracker.expense.CategoryExpenseSummary(e.category.id, e.category.name, SUM (e.amount), COUNT (e))
+            FROM Expense e
+            WHERE e.user.id = :userId
+            AND e.expenseDate >= :from AND e.expenseDate <= :to
+            GROUP BY e.category.id, e.category.name
+            ORDER BY SUM(e.amount) DESC, e.category.name DESC
+            """)
+    List<CategoryExpenseSummary> sumByCategoryReport(@Param("userId") Long userId,
+                                                     @Param("from") LocalDate from,
+                                                     @Param("to") LocalDate to);
 }
