@@ -3,6 +3,7 @@ package com.github.valdpq.expensetracker.auth;
 import com.github.valdpq.expensetracker.auth.dto.AuthResponse;
 import com.github.valdpq.expensetracker.auth.dto.LoginRequest;
 import com.github.valdpq.expensetracker.auth.dto.RegisterRequest;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+@SecurityRequirements
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/auth")
