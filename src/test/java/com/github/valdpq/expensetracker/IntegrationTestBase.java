@@ -2,6 +2,8 @@ package com.github.valdpq.expensetracker;
 
 import com.github.valdpq.expensetracker.auth.dto.AuthResponse;
 import com.github.valdpq.expensetracker.auth.dto.RegisterRequest;
+import com.github.valdpq.expensetracker.category.dto.CategoryRequest;
+import com.github.valdpq.expensetracker.category.dto.CategoryResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.context.ImportTestcontainers;
@@ -34,5 +36,17 @@ public abstract class IntegrationTestBase {
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readValue(response, AuthResponse.class).token();
+    }
+
+    protected long createCategoryAndGetId(String token, String name) throws Exception {
+        String body = objectMapper.writeValueAsString(new CategoryRequest(name));
+
+        String response = mockMvc.perform(post("/api/categories")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readValue(response, CategoryResponse.class).id();
     }
 }
