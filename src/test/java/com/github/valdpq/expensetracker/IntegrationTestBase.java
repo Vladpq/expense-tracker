@@ -2,6 +2,7 @@ package com.github.valdpq.expensetracker;
 
 import com.github.valdpq.expensetracker.auth.dto.AuthResponse;
 import com.github.valdpq.expensetracker.auth.dto.RegisterRequest;
+import com.github.valdpq.expensetracker.budget.dto.CreateBudgetRequest;
 import com.github.valdpq.expensetracker.category.dto.CategoryRequest;
 import com.github.valdpq.expensetracker.category.dto.CategoryResponse;
 import com.github.valdpq.expensetracker.expense.dto.CreateExpenseRequest;
@@ -16,6 +17,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -67,5 +69,19 @@ public abstract class IntegrationTestBase {
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         return objectMapper.readValue(response, CreateExpenseResponse.class).id();
+    }
+
+    protected long createBudgetAndGetId(String token, Long categoryId,
+                                        BigDecimal amount, YearMonth month) throws Exception {
+        String body = objectMapper.writeValueAsString(
+                new CreateBudgetRequest(amount, month, categoryId));
+
+        String response = mockMvc.perform(post("/api/budgets")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType("application/json")
+                        .content(body))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return objectMapper.readTree(response).get("id").asLong();
     }
 }
