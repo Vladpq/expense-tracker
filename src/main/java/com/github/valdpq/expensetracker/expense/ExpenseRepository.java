@@ -48,7 +48,7 @@ public interface ExpenseRepository extends JpaRepository<Expense, Long> {
             WHERE e.user.id = :userId
             AND e.expenseDate >= :from AND e.expenseDate <= :to
             GROUP BY e.category.id, e.category.name
-            ORDER BY SUM(e.amount) DESC, e.category.name DESC
+            ORDER BY SUM(e.amount) DESC, e.category.name ASC
             """)
     List<CategoryExpenseSummary> sumByCategoryReport(@Param("userId") Long userId,
                                                      @Param("from") LocalDate from,
