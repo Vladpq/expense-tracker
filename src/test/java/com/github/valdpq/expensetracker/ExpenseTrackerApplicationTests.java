@@ -1,12 +1,8 @@
 package com.github.valdpq.expensetracker;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 
-@Import(TestcontainersConfiguration.class)
-@SpringBootTest
-class ExpenseTrackerApplicationTests {
+class ExpenseTrackerApplicationTests extends IntegrationTestBase {
 
 	@Test
 	void contextLoads() {
