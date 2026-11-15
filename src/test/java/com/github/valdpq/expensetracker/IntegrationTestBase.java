@@ -9,8 +9,9 @@ import com.github.valdpq.expensetracker.expense.dto.CreateExpenseRequest;
 import com.github.valdpq.expensetracker.expense.dto.CreateExpenseResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.context.ImportTestcontainers;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
@@ -22,7 +23,8 @@ import java.time.YearMonth;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@ImportTestcontainers(TestcontainersConfiguration.class)
+@ActiveProfiles("test")
+@Import(TestcontainersConfiguration.class)
 @Transactional
 @SpringBootTest
 @AutoConfigureMockMvc
